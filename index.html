@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="nl">
+
+<head>
+    <meta charset="utf-8" />
+    <title>WebXR Kliktest</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+</head>
+
+<body>
+    <a-scene background="color: #ECECEC" vr-mode-ui="enabled: true">
+        <a-assets>
+            <canvas id="tickerCanvas" width="4096" height="512"></canvas>
+        </a-assets>
+
+        <!-- =========================
+       PLAYER: camera + VR controller pointer
+       ========================= -->
+        <a-entity id="playerRig" position="0 0 0">
+            <!-- Camera: desktop cursor blijft handig tijdens bouwen -->
+            <a-entity id="camera" camera position="0 1.6 0" look-controls wasd-controls="enabled: false"
+                cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+            </a-entity>
+        </a-entity>
+        <!-- VR controller laser pointer -->
+        <a-entity id="rightHandLaser" laser-controls="hand: right" raycaster="objects: .clickable"
+            line="color: red; opacity: 0.8">
+        </a-entity>
+
+        <!-- =========================
+       ROOM: vloer en muren
+       ========================= -->
+        <a-entity id="room">
+            <!-- Vloer (één vloer, groot genoeg) -->
+            <a-plane id="floor" rotation="-90 0 0" width="20" height="20" color="#F2F2F2">
+            </a-plane>
+            <!-- Achterwand -->
+            <a-plane id="backWall" position="0 5 -10" width="20" height="10" color="#E6E6E6">
+            </a-plane>
+            <!-- Zijwanden -->
+            <a-plane id="leftWall" position="-10 5 0" rotation="0 90 0" width="20" height="10" color="#ECECEC">
+            </a-plane>
+            <a-plane id="rightWall" position="10 5 0" rotation="0 -90 0" width="20" height="10" color="#ECECEC">
+            </a-plane>
+        </a-entity>
+
+        <!-- =========================
+       LIGHTS: licht in de ruimte
+       ========================= -->
+        <a-entity id="lights">
+            <a-light type="ambient" intensity="0.6"></a-light>
+            <a-light type="directional" position="0 10 5" intensity="0.6"></a-light>
+        </a-entity>
+
+        <!-- =========================
+       UI: wat leerlingen moeten lezen en bedienen
+       ========================= -->
+        <a-entity id="ui">
+            <!-- Referentiepunt (handig voor bouwen, later mag dit weg) -->
+            <a-sphere id="debugDot" position="0 1.6 -2" radius="0.03" color="#000000"></a-sphere>
+            <!-- Status en koers -->
+            <a-entity id="messagePopup" visible="false" position="0 2.8 -3">
+
+                <a-plane id="messageBackground" width="2.6" height="0.35" color="#111111" material="opacity: 0">
+                </a-plane>
+
+                <a-text id="status" value="" align="center" color="#ffffff" width="3" position="0 0 0.01">
+                </a-text>
+
+            </a-entity>
+            <a-text id="price" visible="false" value="Huidige koers: 50,00 euro" position="-1.5 1.9 -4" width="4"
+                color="#000000">
+            </a-text>
+            <!-- Achtergrond marktzone -->
+            <a-plane position="-0.5 1.65 -3" width="1.0" height="0.9" color="#1b5e20"
+                material="shader: flat; opacity: 0.15">
+            </a-plane>
+            <!-- Achtergrond limietzone -->
+            <a-plane position="0.5 1.65 -3" width="1.0" height="0.9" color="#0d47a1"
+                material="shader: flat; opacity: 0.15">
+            </a-plane>
+            <!-- Titels -->
+            <a-text value="Marktorder kopen" align="center" position="-0.5 1.95 -3" width="1.6"
+                color="#222222"></a-text>
+            <a-text value="Limietorder kopen" align="center" position="0.5 1.95 -3" width="1.6"
+                color="#222222"></a-text>
+
+            <!-- Aantallen balk marktorder -->
+            <a-entity id="qtyGroup" position="-0.50 1.75 -3" rotation="0 0 0">
+                <!-- achtergrond balk -->
+                <a-plane id="qtyBg" width="0.9" height="0.14" color="#4a4a4a"></a-plane>
+
+                <!-- min knop -->
+                <a-plane id="qtyMinusButton" class="clickable" position="-0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="-" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+
+                <!-- tekst -->
+                <a-text id="qtyText" value="Aantal: 10" align="center" position="0 0 0.01" width="1.6"
+                    color="#FFFFFF"></a-text>
+
+                <!-- plus knop -->
+                <a-plane id="qtyPlusButton" class="clickable" position="0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="+" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+            </a-entity>
+
+            <!-- Marktorder-knop -->
+            <a-box id="testButton" class="clickable" position="-0.5 1.4 -3" width="0.7" height="0.15" depth="0.1"
+                color="#4CAF50">
+                <a-text id="marketActionText" value="Plaatsen" align="center" position="0 0 0.11" width="1.5"
+                    color="#FFFFFF"></a-text>
+            </a-box>
+            <!-- Aantallen balk limietorder -->
+            <a-entity id="limitQtyGroup" position="0.50 1.75 -3" rotation="0 0 0">
+                <a-plane id="limitQtyBg" width="0.9" height="0.14" color="#4a4a4a"></a-plane>
+
+                <a-plane id="limitQtyMinusButton" class="clickable" position="-0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="-" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+
+                <a-text id="limitQtyText" value="Aantal: 10" align="center" position="0 0 0.01" width="1.6"
+                    color="#FFFFFF"></a-text>
+
+                <a-plane id="limitQtyPlusButton" class="clickable" position="0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="+" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+            </a-entity>
+
+            <!--Prijs instellen-->
+            <a-entity id="limitPriceGroup" position="0.50 1.6 -3" rotation="0 0 0">
+                <a-plane id="limitPriceBg" width="0.9" height="0.14" color="#4a4a4a"></a-plane>
+
+                <a-plane id="limitPriceMinusButton" class="clickable" position="-0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="-" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+
+                <a-text id="limitPriceText" value="Prijs: 50,00" align="center" position="0 0 0.01" width="1.6"
+                    color="#FFFFFF"></a-text>
+
+                <a-plane id="limitPricePlusButton" class="clickable" position="0.35 0 0.01" width="0.18" height="0.14"
+                    color="#3f3f3f">
+                    <a-text value="+" align="center" position="0 0 0.01" width="2" color="#FFFFFF"></a-text>
+                </a-plane>
+            </a-entity>
+
+            <!-- Limietorder-knop -->
+            <a-box id="limitBuyButton" class="clickable" position="0.5 1.4 -3" width="0.7" height="0.15" depth="0.1"
+                color="#1976D2">
+                <a-text id="limitActionText" value="Plaatsen" align="center" position="0 0 0.11" width="1.5"
+                    color="#FFFFFF"></a-text>
+            </a-box>
+
+            <!-- Taakbalk onderaan (UI-only) -->
+            <a-entity id="taskbar" position="0 1.18 -2">
+
+                <a-plane id="undoButton" class="clickable" width="0.35" height="0.12" color="#2b2b2b"
+                    material="shader: flat; opacity: 0.92" position="-0.42 0 0">
+                </a-plane>
+
+                <a-text id="undoButtonText" value="VORIGE" align="center" color="#ffffff" width="1.2"
+                    position="-0.42 0 0.01">
+                </a-text>
+
+                <a-plane id="refreshButton" class="clickable" width="0.35" height="0.12" color="#2b2b2b"
+                    material="shader: flat; opacity: 0.92">
+                </a-plane>
+
+                <a-text id="refreshButtonText" value="REFRESH" align="center" color="#ffffff" width="1.2"
+                    position="0 0 0.01">
+                </a-text>
+
+            </a-entity>
+        </a-entity>
+
+        <!-- =========================
+     ORDERBOEK LINKS: KOOPORDERS
+     ========================= -->
+        <a-entity id="orderbookBuy" position="-3 2.2 -4" rotation="0 30 0">
+            <!-- Paneel achtergrond -->
+            <a-box id="buyBookPanel" width="2.6" height="2.2" depth="0.05" color="#E8F5E9">
+            </a-box>
+            <!-- Titel -->
+            <a-plane position="0 1 0.03" width="2.6" height="0.35" color="#2E7D32">
+                <a-text value="KOOPORDERS" align="center" position="0 0 0.01" width="3" color="#FFFFFF" shader="msdf">
+                </a-text>
+            </a-plane>
+            <!-- Titels + orderregels -->
+            <a-text id="buyHeader" value="PRIJS     AANTAL" position="-1.15 0.55 0.03" width="2.3" color="#1B5E20">
+            </a-text>
+            <a-text id="buyLines" value="50,00      10&#10;49,50      20&#10;49,00      30" position="-1.15 0.3 0.03"
+                width="2.3" color="#1B5E20" anchor="left" baseline="top">
+            </a-text>
+        </a-entity>
+
+        <!-- =========================
+     ORDERBOEK RECHTS: VERKOOPORDERS
+     ========================= -->
+        <a-entity id="orderbookSell" position="3 2.2 -4" rotation="0 -30 0">
+            <!-- Achtergrondpaneel licht rood om aanbod te suggereren -->
+            <a-box id="sellBookPanel" width="2.6" height="2.2" depth="0.05" color="#FDECEA">
+            </a-box>
+            <!-- Titelbalk bovenaan het paneel -->
+            <a-plane position="0 1 0.03" width="2.6" height="0.35" color="#C62828">
+                <!-- Titeltekst gecentreerd in de titelbalk -->
+                <a-text value="VERKOOPORDERS" align="center" position="0 0 0.01" width="3" color="#FFFFFF"
+                    shader="msdf">
+                </a-text>
+            </a-plane>
+            <!-- Titels + orderregels -->
+            <a-text id="sellHeader" value="PRIJS     AANTAL" position="-1.15 0.55 0.03" width="2.3" color="#B71C1C">
+            </a-text>
+            <a-text id="sellLines" value="50,50      12&#10;51,00      20&#10;51,50      35" position="-1.15 0.3 0.03"
+                width="2.3" color="#B71C1C" anchor="left" baseline="top">
+            </a-text>
+        </a-entity>
+
+        <!-- =========================
+       DECOR: beursgevoel (achtergrondscherm)
+       ========================= -->
+        <a-entity id="decor">
+            <a-entity id="backWallRig" position="0 3.5 0">
+                <!-- Groot scherm (dunne box om flikkeren te vermijden) -->
+                <!-- TV-style beurs scherm -->
+                <a-entity id="marketScreenTV" position="0 3.5 -10">
+                    <!-- Buitenbehuizing -->
+                    <a-box width="8.3" height="3.3" depth="0.18" color="#111111">
+                    </a-box>
+                    <!-- Kader -->
+                    <a-box width="8.05" height="3.05" depth="0.08" position="0 0 0.06" color="#1c1c1c">
+                    </a-box>
+                    <!-- Display vlak -->
+                    <a-plane width="7.7" height="2.7" position="0 0 0.11" material="
+                        color: #0b1b2a;
+                        emissive: #0b1b2a;
+                        emissiveIntensity: 0.9;
+                        roughness: 0.35;
+                        metalness: 0.1;
+                        side: double;">
+                    </a-plane>
+                    <a-text value="LIVE PRICE" position="0 0.35 0.12" align="center" width="6" color="#00e5ff"
+                        shader="msdf" scale="2 2 2">
+                    </a-text>
+                    <a-text id="tvPrice" value="€ 50,00" position="0 -0.5 0.12" align="center" width="8" color="#FFFFFF"
+                        shader="msdf" scale="3 3 3">
+                    </a-text>
+                </a-entity>
+                <!-- Label op het scherm -->
+                <a-plane id="marketLabel" position="0 4.5 -9.84" width="4.5" height="0.6" color="#000000">
+                    <a-text value="MARKET OVERVIEW" align="center" position="0 0 0.01" width="4" color="#FFFFFF">
+                    </a-text>
+                </a-plane>
+                <!-- tickerTape (canvas, met automatische clipping) -->
+                <a-box id="tickerTape" position="0 5.2 -9.6" width="19.2" height="0.6" depth="0.08"
+                    material="src: #tickerCanvas; metalness: 0.0; roughness: 0.9"
+                    ticker-canvas="text: ABC 50,00   XYZ 32,40   LMN 74,10   QRS 18,90   BOND 101,20   ETF 25,60   ABC 50,00   XYZ 32,40   ; speed: 140;">
+                </a-box>
+            </a-entity>
+            <!-- Decor linkerwand: Vraag -->
+            <a-plane id="leftWallDecor" position="-9.9 3 -3" rotation="0 90 0" width="4" height="2" color="#E8F5E9">
+                <a-text value="VRAAGZIJDE\nKopers plaatsen orders\ntegen een maximale prijs" align="center"
+                    position="0 0 0.01" width="3.5" color="#1B5E20" shader="msdf">
+                </a-text>
+            </a-plane>
+            <!-- Decor rechterwand: Aanbod -->
+            <a-plane id="rightWallDecor" position="9.9 3 -3" rotation="0 -90 0" width="4" height="2" color="#FDECEA">
+                <a-text value="AANBODZIJDE\nVerkopers bieden aan\ntegen een minimale prijs" align="center"
+                    position="0 0 0.01" width="3.5" color="#B71C1C" shader="msdf">
+                </a-text>
+            </a-plane>
+            <!-- Lichtaccent linkerwand -->
+            <a-plane position="-9.8 3 -6" rotation="0 90 0" width="0.3" height="6" color="#C8E6C9">
+            </a-plane>
+            <!-- Lichtaccent rechterwand -->
+            <a-plane position="9.8 3 -6" rotation="0 -90 0" width="0.3" height="6" color="#FFCDD2">
+            </a-plane>
+        </a-entity>
+    </a-scene>
+
+
+    <script>
+        AFRAME.registerComponent('ticker-canvas', {
+            schema: {
+                text: { type: 'string', default: 'ABC 50,00   XYZ 32,40   LMN 74,10   QRS 18,90   BOND 101,20   ETF 25,60   ' },
+                speed: { type: 'number', default: 140 }, // pixels per seconde
+                bg: { type: 'string', default: '#0000FF' }, // jouw huidige blauw
+                fg: { type: 'string', default: '#FFFFFF' },
+                font: { type: 'string', default: 'bold 120px Arial' },
+                paddingX: { type: 'number', default: 80 }
+            },
+
+            init: function () {
+                const canvas = document.querySelector('#tickerCanvas');
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+
+                this.w = canvas.width;
+                this.h = canvas.height;
+
+                this.x = this.w;
+                this.ctx.font = this.data.font;
+                this.textW = Math.ceil(this.ctx.measureText(this.data.text).width);
+
+                this.el.setAttribute('material', {
+                    src: '#tickerCanvas',
+                    transparent: false
+                });
+
+                this.el.addEventListener('object3dset', () => {
+                    const mesh = this.el.getObject3D('mesh');
+                    if (!mesh) return;
+
+                    const map = mesh.material.map;
+                    if (!map) return;
+
+                    map.minFilter = THREE.LinearFilter;
+                    map.magFilter = THREE.LinearFilter;
+                    map.generateMipmaps = false;
+                    map.needsUpdate = true;
+                });
+            },
+
+            tick: function (t, dt) {
+                if (!dt) return;
+
+                const ctx = this.ctx;
+                const d = this.data;
+
+                // achtergrond
+                ctx.fillStyle = d.bg;
+                ctx.fillRect(0, 0, this.w, this.h);
+
+                // tekst
+                ctx.font = d.font;
+                ctx.fillStyle = d.fg;
+                ctx.textBaseline = 'middle';
+
+                this.x -= (d.speed * dt) / 1000;
+
+                if (this.x < -this.textW - d.paddingX) {
+                    this.x = this.w + d.paddingX;
+                }
+
+                const y = this.h / 2;
+                ctx.fillText(d.text, this.x, y);
+                ctx.fillText(d.text, this.x + this.textW + d.paddingX, y);
+
+                const mesh = this.el.getObject3D('mesh');
+                if (mesh && mesh.material && mesh.material.map) {
+                    mesh.material.map.needsUpdate = true;
+                }
+            }
+        });
+
+        window.addEventListener("load", () => {
+            const scene = document.querySelector("a-scene");
+
+            scene.addEventListener("loaded", () => {
+                const status = document.querySelector("#status");
+                const button = document.querySelector("#testButton");
+                const limitBuyButton = document.querySelector("#limitBuyButton");
+                const priceText = document.querySelector("#price");
+                const tvPrice = document.querySelector("#tvPrice");
+                const buyLinesText = document.querySelector("#buyLines");
+                const sellLinesText = document.querySelector("#sellLines");
+
+
+                let currentPrice = 50.0;
+                let uiQty = 10;
+                let uiLimitQty = 10;
+                let uiLimitPrice = currentPrice;
+
+
+                function formatEuro(n) {
+                    // Hou het simpel: 2 cijfers, punt of komma maakt didactisch niet uit
+                    return n.toFixed(2) + " euro";
+                }
+
+                function formatEuroBE(n) {
+                    return n.toFixed(2).replace(".", ",");
+                }
+
+                function updatePrice(newPrice) {
+                    currentPrice = newPrice;
+
+                    // Tekst in de UI
+                    priceText.setAttribute(
+                        "value",
+                        "Huidige koers: " + formatEuroBE(currentPrice) + " euro"
+                    );
+
+                    // Tekst op het tv-scherm
+                    if (tvPrice) {
+                        tvPrice.setAttribute("value", "€ " + formatEuroBE(currentPrice));
+                    }
+                }
+                function updateActionText() {
+                    document.querySelector("#marketActionText")
+                        .setAttribute("value", "Plaatsen");
+
+                    document.querySelector("#limitActionText")
+                        .setAttribute("value", "Plaatsen");
+                    updateQtyText();
+                    updateLimitQtyText();
+                    updateLimitPriceText();
+
+                    const marketButton = document.querySelector("#testButton");
+
+                    if (uiQty === 0) {
+                        marketButton.setAttribute("color", "#BBBBBB");
+                    } else {
+                        marketButton.setAttribute("color", "#4CAF50");
+                    }
+                }
+
+                function setStatus(msg) {
+                    status.setAttribute("value", msg);
+                }
+
+                function updateQtyText() {
+                    const t = document.querySelector("#qtyText");
+                    if (t) {
+                        t.setAttribute("value", "Aantal: " + uiQty);
+                    }
+                }
+                function updateLimitQtyText() {
+                    const t = document.querySelector("#limitQtyText");
+                    if (t) t.setAttribute("value", "Aantal: " + uiLimitQty);
+                }
+
+                function updateLimitPriceText() {
+                    const t = document.querySelector("#limitPriceText");
+                    if (t) t.setAttribute("value", "Prijs: " + formatEuro(uiLimitPrice));
+                }
+
+                // ===== Mini orderboek state =====
+                // Koop: hoogste prijs eerst, verkoop: laagste prijs eerst
+                let nextId = 1;
+                let time = 0;
+
+                const buyOrders = [];  // {id, qty, price, time}
+                const sellOrders = []; // {id, qty, price, time}
+                const history = [];
+
+                function sortBooks() {
+                    buyOrders.sort((a, b) => {
+                        if (b.price !== a.price) return b.price - a.price;
+                        return a.time - b.time;
+                    });
+
+                    sellOrders.sort((a, b) => {
+                        if (a.price !== b.price) return a.price - b.price;
+                        return a.time - b.time;
+                    });
+                }
+
+                function bestBid() {
+                    return buyOrders.length ? buyOrders[0] : null;
+                }
+
+                function bestAsk() {
+                    return sellOrders.length ? sellOrders[0] : null;
+                }
+
+                function createLimitOrder(side, qty, price) {
+                    return { id: nextId++, side, qty, price, time: ++time };
+                }
+
+                function addOrder(order) {
+                    if (order.side === "buy") buyOrders.push(order);
+                    else sellOrders.push(order);
+
+                    sortBooks();
+                }
+
+                function match() {
+                    const trades = [];
+
+                    while (buyOrders.length && sellOrders.length) {
+                        const bid = bestBid();
+                        const ask = bestAsk();
+
+                        if (bid.price < ask.price) break;
+
+                        const tradeQty = Math.min(bid.qty, ask.qty);
+
+                        // Didactisch helder: transactie aan de verkoopprijs (ask)
+                        const tradePrice = ask.price;
+
+                        bid.qty -= tradeQty;
+                        ask.qty -= tradeQty;
+
+                        trades.push({ qty: tradeQty, price: tradePrice, buyId: bid.id, sellId: ask.id });
+
+                        if (bid.qty === 0) buyOrders.shift();
+                        if (ask.qty === 0) sellOrders.shift();
+                    }
+
+                    return trades;
+                }
+
+                function seedSomeLiquidity() {
+                    // Kleine startliquiditeit zodat een "marktorder kopen" iets kan raken.
+                    // Je kan dit later vervangen door echte leerlinginput.
+                    if (sellOrders.length === 0 && buyOrders.length === 0) {
+                        addOrder(createLimitOrder("sell", 12, 50.5));
+                        addOrder(createLimitOrder("sell", 20, 51.0));
+                        addOrder(createLimitOrder("sell", 35, 51.5));
+
+                        addOrder(createLimitOrder("buy", 10, 50.0));
+                        addOrder(createLimitOrder("buy", 20, 49.5));
+                        addOrder(createLimitOrder("buy", 30, 49.0));
+
+                    }
+                    renderAll();
+                }
+
+                function formatPriceBE(n) {
+                    // 50.5 wordt "50,50"
+                    return n.toFixed(2).replace(".", ",");
+                }
+
+                function renderOrderBook(linesEl, orders, maxLines) {
+                    // orders is een array met objects {qty, price}
+                    // maxLines is bijvoorbeeld 6
+                    const shown = orders.slice(0, maxLines);
+
+                    if (shown.length === 0) {
+                        linesEl.setAttribute("value", "-");
+                        return;
+                    }
+
+                    const rows = shown
+                        .map(o => {
+                            const price = formatPriceBE(o.price).padEnd(11, " ");
+                            const qty = String(o.qty).padStart(2, " ");
+                            return price + qty;
+                        })
+                        .join("\n");
+
+                    linesEl.setAttribute("value", rows);
+                }
+
+                function renderAll() {
+                    // Zorg dat de boeken gesorteerd zijn voor je toont
+                    sortBooks();
+
+                    renderOrderBook(buyLinesText, buyOrders, 12);
+                    renderOrderBook(sellLinesText, sellOrders, 12);
+                }
+
+                function marketBuy(qty) {
+                    saveState();
+                    // Marktorder kopen: match tegen beste verkoop tot qty op is of boek leeg.
+
+                    if (sellOrders.length === 0) {
+                        showMessage("Marktorder kopen niet uitgevoerd: geen verkooporders, geen liquiditeit.");
+                        return;
+                    }
+
+                    let remaining = qty;
+                    let lastTrade = null;
+
+                    while (remaining > 0 && sellOrders.length > 0) {
+                        const ask = bestAsk();
+                        const traded = Math.min(remaining, ask.qty);
+
+                        // Transactie aan ask-prijs
+                        ask.qty -= traded;
+                        remaining -= traded;
+
+                        lastTrade = { qty: traded, price: ask.price };
+
+                        if (ask.qty === 0) sellOrders.shift();
+                    }
+
+                    if (lastTrade) {
+                        updatePrice(lastTrade.price);
+                        renderAll();
+                        flashSellBook();
+                        flashSellPrice(lastTrade.price);
+
+                        if (remaining === 0) {
+                            showMessage("Marktorder kopen uitgevoerd: " + qty + " stuks aan " + formatEuro(lastTrade.price) + ".");
+                        } else {
+                            showMessage("Marktorder kopen deels uitgevoerd: " + (qty - remaining) + " stuks. Rest: " + remaining + " stuks (boek leeg).");
+                        }
+                    }
+                }
+                function limitBuy(qty, price) {
+                    saveState();
+                    // Limietorder kopen: komt in het koopboek te staan aan een vaste prijs.
+                    // Het matcht alleen als er een verkooporder is met prijs <= jouw limietprijs.
+
+                    const order = createLimitOrder("buy", qty, price);
+                    addOrder(order);
+
+                    // Probeer meteen te matchen (soms matcht het direct als je limiet hoog genoeg is)
+                    const trades = match();
+                    const totalTraded = trades.reduce((sum, trade) => sum + trade.qty, 0);
+
+                    // Update koers en status
+                    if (trades.length === 0) {
+                        renderAll();
+                        flashBuyBook();
+                        flashBuyLine(price, qty);
+                        showMessage("Limietorder kopen geplaatst: " + qty + " stuks aan " + formatEuro(price) + ". Geen match.");
+
+                    } else {
+
+                        const lastTrade = trades[trades.length - 1];
+                        updatePrice(lastTrade.price);
+                        renderAll();
+
+                        if (totalTraded === qty) {
+                            flashSellBook();
+                            flashSellPrice(lastTrade.price);
+                            showMessage("Limietorder kopen volledig uitgevoerd: " + totalTraded + " stuks.");
+
+                        } else {
+
+                            const remaining = qty - totalTraded;
+                            flashSellBook();
+                            flashSellPrice(lastTrade.price);
+                            flashBuyBook();
+                            flashBuyLine(price, remaining);
+                            showMessage("Limietorder kopen deels uitgevoerd: " + totalTraded + " stuks verhandeld. Restorder: " + remaining + " stuks aan " + formatEuro(price) + ".");
+                        }
+                    }
+                }
+                function saveState() {
+                    history.push({
+                        buyOrders: JSON.parse(JSON.stringify(buyOrders)),
+                        sellOrders: JSON.parse(JSON.stringify(sellOrders)),
+                        nextId: nextId,
+                        time: time,
+                        currentPrice: currentPrice
+                    });
+                }
+                function undoLastAction() {
+
+                    if (history.length === 0) {
+                        setStatus("Geen vorige situatie beschikbaar.");
+                        return;
+                    }
+
+                    const prev = history.pop();
+
+                    buyOrders.length = 0;
+                    sellOrders.length = 0;
+
+                    buyOrders.push(...prev.buyOrders);
+                    sellOrders.push(...prev.sellOrders);
+
+                    nextId = prev.nextId;
+                    time = prev.time;
+                    updatePrice(prev.currentPrice);
+
+                    renderAll();
+                    setStatus("Vorige situatie hersteld.");
+                }
+                function showMessage(text) {
+
+                    const popup = document.querySelector("#messagePopup");
+                    const bg = document.querySelector("#messageBackground");
+
+                    status.setAttribute("value", text);
+                    popup.setAttribute("visible", true);
+
+                    bg.setAttribute("animation", {
+                        property: "material.opacity",
+                        to: 0.85,
+                        dur: 200
+                    });
+
+                    setTimeout(() => {
+
+                        bg.setAttribute("animation", {
+                            property: "material.opacity",
+                            to: 0,
+                            dur: 200
+                        });
+
+                        setTimeout(() => {
+                            popup.setAttribute("visible", false);
+                        }, 200);
+
+                    }, 3500);
+                }
+                function flashSellBook() {
+                    const panel = document.querySelector("#sellBookPanel");
+                    if (!panel) return;
+
+                    const originalColor = panel.getAttribute("color");
+
+                    panel.setAttribute("color", "#ff6b6b"); // korte highlight
+
+                    setTimeout(() => {
+                        panel.setAttribute("color", originalColor);
+                    }, 1500);
+                }
+                function flashBuyBook() {
+                    const panel = document.querySelector("#buyBookPanel");
+                    if (!panel) return;
+
+                    const originalColor = panel.getAttribute("color");
+
+                    panel.setAttribute("color", "#7bd88f");
+
+                    setTimeout(() => {
+                        panel.setAttribute("color", originalColor);
+                    }, 1500);
+                }
+                function flashSellLines() {
+                    const lines = document.querySelector("#sellLines");
+                    if (!lines) return;
+
+                    const originalColor = lines.getAttribute("color");
+
+                    lines.setAttribute("color", "#ff3b3b");
+
+                    setTimeout(() => {
+                        lines.setAttribute("color", originalColor);
+                    }, 1200);
+                }
+                function flashSellPrice(price) {
+                    const lines = document.querySelector("#sellLines");
+                    if (!lines) return;
+
+                    const current = lines.getAttribute("value");
+                    const priceText = formatPriceBE(price);
+
+                    const highlighted = current
+                        .split("\n")
+                        .map(line => {
+                            if (line.includes(priceText)) {
+                                return ">> " + line.trim() + " <<";
+                            }
+                            return line;
+                        })
+                        .join("\n");
+
+                    lines.setAttribute("value", highlighted);
+
+                    setTimeout(() => {
+                        renderAll();
+                    }, 1500);
+                }
+                function flashBuyLine(price, qty) {
+                    const lines = document.querySelector("#buyLines");
+                    if (!lines) return;
+
+                    const current = lines.getAttribute("value");
+                    const priceText = formatPriceBE(price);
+
+                    let highlightedOnce = false;
+
+                    const highlighted = current
+                        .split("\n")
+                        .map(line => {
+                            const trimmed = line.trim();
+
+                            if (!highlightedOnce && trimmed.includes(priceText) && trimmed.endsWith(String(qty))) {
+                                highlightedOnce = true;
+                                return ">> " + trimmed + " <<";
+                            }
+
+                            return line;
+                        })
+                        .join("\n");
+
+                    lines.setAttribute("value", highlighted);
+
+                    setTimeout(() => {
+                        renderAll();
+                    }, 1500);
+                }
+
+                // ===== Init =====
+                updatePrice(currentPrice);
+                setStatus("Scene geladen. Hover en klik op de groene box.");
+                seedSomeLiquidity();
+                renderAll();
+                updateActionText();
+
+                // Hover feedback blijft identiek (maar niet als disabled)
+                button.addEventListener("mouseenter", () => {
+                    if (uiQty === 0) return;
+                    button.setAttribute("color", "#8BC34A");
+                });
+
+                button.addEventListener("mouseleave", () => {
+                    if (uiQty === 0) return;
+                    button.setAttribute("color", "#4CAF50");
+                });
+
+                // Hover feedback voor limietknop (zelfde structuur als marktknop)
+                limitBuyButton.addEventListener("mouseenter", () => {
+                    if (uiLimitQty === 0) return;
+                    limitBuyButton.setAttribute("color", "#1E88E5"); // lichtere hoverkleur
+                });
+
+                limitBuyButton.addEventListener("mouseleave", () => {
+                    if (uiLimitQty === 0) return;
+                    limitBuyButton.setAttribute("color", "#1976D2"); // originele blauw
+                });
+
+                //instellen aantal marktorder
+                const qtyMinusButton = document.querySelector("#qtyMinusButton");
+                const qtyPlusButton = document.querySelector("#qtyPlusButton");
+
+                qtyPlusButton.addEventListener("click", () => {
+                    uiQty += 5;
+                    if (uiQty > 30) uiQty = 30;
+                    updateActionText();
+                });
+
+                qtyMinusButton.addEventListener("click", () => {
+                    uiQty -= 5;
+                    if (uiQty < 0) uiQty = 0;
+                    updateActionText();
+                });
+
+                // instellen aantal limietorder
+                const limitQtyMinusButton = document.querySelector("#limitQtyMinusButton");
+                const limitQtyPlusButton = document.querySelector("#limitQtyPlusButton");
+
+                if (!limitQtyMinusButton || !limitQtyPlusButton) {
+                    console.warn("Limiet qty knoppen niet gevonden:", { limitQtyMinusButton, limitQtyPlusButton });
+                } else {
+                    limitQtyPlusButton.addEventListener("click", () => {
+                        uiLimitQty += 5;
+                        if (uiLimitQty > 30) uiLimitQty = 30;
+                        updateActionText();
+                    });
+
+                    limitQtyMinusButton.addEventListener("click", () => {
+                        uiLimitQty -= 5;
+                        if (uiLimitQty < 0) uiLimitQty = 0;
+                        updateActionText();
+                    });
+                }
+
+                //Instellen prijs limietorder
+                const limitPriceMinusButton = document.querySelector("#limitPriceMinusButton");
+                const limitPricePlusButton = document.querySelector("#limitPricePlusButton");
+
+                limitPricePlusButton.addEventListener("click", () => {
+                    uiLimitPrice += 0.5;
+                    uiLimitPrice = Math.round(uiLimitPrice * 100) / 100;
+                    updateActionText();
+                });
+
+                limitPriceMinusButton.addEventListener("click", () => {
+                    uiLimitPrice -= 0.5;
+                    if (uiLimitPrice < 0.5) uiLimitPrice = 0.5;
+                    uiLimitPrice = Math.round(uiLimitPrice * 100) / 100;
+                    updateActionText();
+                });
+
+                // ===== Click: nu echte marktactie =====
+                button.addEventListener("click", () => {
+                    if (uiQty === 0) return;
+
+                    marketBuy(uiQty);
+                    updateActionText();
+                });
+
+                limitBuyButton.addEventListener("click", () => {
+                    if (uiLimitQty === 0) return;
+
+                    limitBuy(uiLimitQty, uiLimitPrice);
+                    updateActionText();
+                });
+
+                // ==== Refresh ====
+                const refreshButton = document.querySelector("#refreshButton");
+
+                refreshButton.addEventListener("click", () => {
+                    setStatus("Herlaadt...");
+                    window.location.reload();
+                });
+                // ==== Vorige ====
+                const undoButton = document.querySelector("#undoButton");
+
+                undoButton.addEventListener("click", () => {
+                    undoLastAction();
+                });
+
+            });
+        });
+
+    </script>
+
+
+</body>
+
+</html>
