@@ -23,14 +23,18 @@
                 cursor="rayOrigin: mouse" raycaster="objects: .clickable">
             </a-entity>
 
-            <a-entity id="rightHand" tracked-controls="hand: right" raycaster="objects: .clickable"
-                line="color: red; opacity: 0.8" cursor="rayOrigin: controller">
+            <a-entity id="rightHand" tracked-controls="hand: right" raycaster="objects: .clickable; far: 20"
+                cursor="rayOrigin: controller">
                 <a-sphere radius="0.03" color="red"></a-sphere>
+                <a-entity line="start: 0 0 0; end: 0 0 -20; color: red; opacity: 0.9">
+                </a-entity>
             </a-entity>
 
-            <a-entity id="leftHand" tracked-controls="hand: left" raycaster="objects: .clickable"
-                line="color: blue; opacity: 0.8" cursor="rayOrigin: controller">
+            <a-entity id="leftHand" tracked-controls="hand: left" raycaster="objects: .clickable; far: 20"
+                cursor="rayOrigin: controller">
                 <a-sphere radius="0.03" color="blue"></a-sphere>
+                <a-entity line="start: 0 0 0; end: 0 0 -20; color: blue; opacity: 0.9">
+                </a-entity>
             </a-entity>
 
         </a-entity>
