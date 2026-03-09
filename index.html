@@ -23,12 +23,16 @@
                 cursor="rayOrigin: mouse" raycaster="objects: .clickable">
             </a-entity>
 
-            <a-entity id="rightHand" tracked-controls="hand: right" raycaster="objects: .clickable; far: 8"
-                cursor="rayOrigin: controller" line="color: red; opacity: 0.8">
+            <a-entity id="rightHand" tracked-controls="hand: right" cursor="rayOrigin: controller"
+                raycaster="objects: .clickable; far: 4">
+                <a-entity line="start: 0 0 0; end: 0 0 -4; color: red; opacity: 0.8">
+                </a-entity>
             </a-entity>
 
             <a-entity id="leftHand" tracked-controls="hand: left" cursor="rayOrigin: controller"
-                raycaster="objects: .clickable; far: 8" line="color: blue; opacity: 0.8">
+                raycaster="objects: .clickable; far: 4">
+                <a-entity line="start: 0 0 0; end: 0 0 -4; color: blue; opacity: 0.8">
+                </a-entity>
             </a-entity>
 
         </a-entity>
