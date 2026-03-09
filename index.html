@@ -19,19 +19,18 @@
        ========================= -->
         <a-entity id="playerRig" position="0 0 0">
 
-            <!-- Camera voor desktop en VR headset -->
             <a-entity id="camera" camera position="0 1.6 0" look-controls wasd-controls="enabled: false"
                 cursor="rayOrigin: mouse" raycaster="objects: .clickable">
             </a-entity>
 
-            <!-- Rechtercontroller -->
-            <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .clickable"
-                line="color: red; opacity: 0.8">
+            <a-entity id="rightHand" tracked-controls="hand: right" raycaster="objects: .clickable"
+                line="color: red; opacity: 0.8" cursor="rayOrigin: controller">
+                <a-sphere radius="0.03" color="red"></a-sphere>
             </a-entity>
 
-            <!-- Linkercontroller -->
-            <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .clickable"
-                line="color: blue; opacity: 0.8">
+            <a-entity id="leftHand" tracked-controls="hand: left" raycaster="objects: .clickable"
+                line="color: blue; opacity: 0.8" cursor="rayOrigin: controller">
+                <a-sphere radius="0.03" color="blue"></a-sphere>
             </a-entity>
 
         </a-entity>
