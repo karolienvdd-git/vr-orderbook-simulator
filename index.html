@@ -20,7 +20,7 @@
         <a-entity id="playerRig" position="0 0 0">
 
             <a-entity id="camera" camera position="0 1.6 0" look-controls wasd-controls="enabled: false"
-                cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+                cursor="rayOrigin: mouse" raycaster="objects: .clickable; showLine: false">
             </a-entity>
 
             <a-entity id="rightHand" laser-controls="hand: right" cursor="rayOrigin: controller"
@@ -165,20 +165,20 @@
             <!-- Taakbalk onderaan (UI-only) -->
             <a-entity id="taskbar" position="0 1.18 -2">
 
-                <a-plane id="undoButton" class="clickable" width="0.35" height="0.12" color="#2b2b2b"
-                    material="shader: flat; opacity: 0.92" position="-0.42 0 0">
+                <a-plane id="undoButton" class="clickable" width="0.38" height="0.12" color="#2b2b2b"
+                    material="shader: flat; opacity: 0.92" position="0 0 0">
                 </a-plane>
 
                 <a-text id="undoButtonText" value="VORIGE" align="center" color="#ffffff" width="1.2"
-                    position="-0.42 0 0.01">
+                    position="0 0 0.01">
                 </a-text>
 
-                <a-plane id="refreshButton" class="clickable" width="0.35" height="0.12" color="#2b2b2b"
-                    material="shader: flat; opacity: 0.92">
+                <a-plane id="refreshButton" class="clickable" width="0.26" height="0.09" color="#1f1f1f"
+                    material="shader: flat; opacity: 0.65" position="0.42 -0.01 -0.02">
                 </a-plane>
 
-                <a-text id="refreshButtonText" value="REFRESH" align="center" color="#ffffff" width="1.2"
-                    position="0 0 0.01">
+                <a-text id="refreshButtonText" value="REFRESH" align="center" color="#d0d0d0" width="0.9"
+                    position="0.42 -0.01 -0.01">
                 </a-text>
 
             </a-entity>
@@ -250,10 +250,15 @@
                         side: double;">
                     </a-plane>
                     <a-text value="LIVE PRICE" position="0 0.35 0.12" align="center" width="6" color="#00e5ff"
-                        shader="msdf" scale="2 2 2">
+                        shader="msdf" scale="1 1 1">
                     </a-text>
-                    <a-text id="tvPrice" value="€ 50,00" position="0 -0.5 0.12" align="center" width="8" color="#FFFFFF"
-                        shader="msdf" scale="3 3 3">
+
+                    <a-text id="tvPrice" value="€ 50,00" position="0 -0.1 0.12" align="center" width="6" color="#FFFFFF"
+                        shader="msdf" scale="2.5 2.5 2.5">
+                    </a-text>
+
+                    <a-text id="tvStatus" value="" position="0 -1.1 0.12" align="center" width="6.5" color="#00e5ff"
+                        shader="msdf" scale="1.2 1.2 1.2">
                     </a-text>
                 </a-entity>
                 <!-- Label op het scherm -->
@@ -402,7 +407,7 @@
 
                     // Tekst op het tv-scherm
                     if (tvPrice) {
-                        tvPrice.setAttribute("value", "€ " + formatEuroBE(currentPrice));
+                        tvPrice.setAttribute("value", "EUR " + formatEuroBE(currentPrice));
                     }
                 }
                 function updateActionText() {
@@ -571,6 +576,7 @@
 
                     let remaining = qty;
                     let lastTrade = null;
+                    let fills = [];
 
                     while (remaining > 0 && sellOrders.length > 0) {
                         const ask = bestAsk();
@@ -581,6 +587,7 @@
                         remaining -= traded;
 
                         lastTrade = { qty: traded, price: ask.price };
+                        fills.push({ qty: traded, price: ask.price });
 
                         if (ask.qty === 0) sellOrders.shift();
                     }
@@ -591,10 +598,20 @@
                         flashSellBook();
                         flashSellPrice(lastTrade.price);
 
+                        const fillsText = fills
+                            .map(fill => `${fill.qty} stuks aan ${formatEuroBE(fill.price)} euro`)
+                            .join(" en ");
+
                         if (remaining === 0) {
-                            showMessage("Marktorder kopen uitgevoerd: " + qty + " stuks aan " + formatEuro(lastTrade.price) + ".");
+                            showMessage("Marktorder kopen uitgevoerd: " + fillsText + ".");
                         } else {
-                            showMessage("Marktorder kopen deels uitgevoerd: " + (qty - remaining) + " stuks. Rest: " + remaining + " stuks (boek leeg).");
+                            showMessage(
+                                "Marktorder kopen deels uitgevoerd: " +
+                                fillsText +
+                                ". Rest: " +
+                                remaining +
+                                " stuks (boek leeg)."
+                            );
                         }
                     }
                 }
@@ -609,13 +626,16 @@
                     // Probeer meteen te matchen (soms matcht het direct als je limiet hoog genoeg is)
                     const trades = match();
                     const totalTraded = trades.reduce((sum, trade) => sum + trade.qty, 0);
+                    const tradesText = trades
+                        .map(trade => `${trade.qty} stuks aan ${formatEuroBE(trade.price)} euro`)
+                        .join(" en ");
 
                     // Update koers en status
                     if (trades.length === 0) {
                         renderAll();
                         flashBuyBook();
                         flashBuyLine(price, qty);
-                        showMessage("Limietorder kopen geplaatst: " + qty + " stuks aan " + formatEuro(price) + ". Geen match.");
+                        showMessage("Limietorder kopen geplaatst: " + qty + " stuks aan " + formatEuroBE(price) + " euro. Geen match.");
 
                     } else {
 
@@ -626,7 +646,7 @@
                         if (totalTraded === qty) {
                             flashSellBook();
                             flashSellPrice(lastTrade.price);
-                            showMessage("Limietorder kopen volledig uitgevoerd: " + totalTraded + " stuks.");
+                            showMessage("Limietorder kopen volledig uitgevoerd: " + tradesText + ".");
 
                         } else {
 
@@ -635,7 +655,15 @@
                             flashSellPrice(lastTrade.price);
                             flashBuyBook();
                             flashBuyLine(price, remaining);
-                            showMessage("Limietorder kopen deels uitgevoerd: " + totalTraded + " stuks verhandeld. Restorder: " + remaining + " stuks aan " + formatEuro(price) + ".");
+                            showMessage(
+                                "Limietorder kopen deels uitgevoerd: " +
+                                tradesText +
+                                ". Restorder: " +
+                                remaining +
+                                " stuks aan " +
+                                formatEuroBE(price) +
+                                " euro."
+                            );
                         }
                     }
                 }
@@ -671,32 +699,12 @@
                     setStatus("Vorige situatie hersteld.");
                 }
                 function showMessage(text) {
-
-                    const popup = document.querySelector("#messagePopup");
-                    const bg = document.querySelector("#messageBackground");
-
+                    const status = document.querySelector("#tvStatus");
                     status.setAttribute("value", text);
-                    popup.setAttribute("visible", true);
-
-                    bg.setAttribute("animation", {
-                        property: "material.opacity",
-                        to: 0.85,
-                        dur: 200
-                    });
 
                     setTimeout(() => {
-
-                        bg.setAttribute("animation", {
-                            property: "material.opacity",
-                            to: 0,
-                            dur: 200
-                        });
-
-                        setTimeout(() => {
-                            popup.setAttribute("visible", false);
-                        }, 200);
-
-                    }, 3500);
+                        status.setAttribute("value", "");
+                    }, 5000);
                 }
                 function flashSellBook() {
                     const panel = document.querySelector("#sellBookPanel");
@@ -708,7 +716,7 @@
 
                     setTimeout(() => {
                         panel.setAttribute("color", originalColor);
-                    }, 1500);
+                    }, 2500);
                 }
                 function flashBuyBook() {
                     const panel = document.querySelector("#buyBookPanel");
@@ -720,7 +728,7 @@
 
                     setTimeout(() => {
                         panel.setAttribute("color", originalColor);
-                    }, 1500);
+                    }, 2500);
                 }
                 function flashSellLines() {
                     const lines = document.querySelector("#sellLines");
@@ -732,7 +740,7 @@
 
                     setTimeout(() => {
                         lines.setAttribute("color", originalColor);
-                    }, 1200);
+                    }, 2500);
                 }
                 function flashSellPrice(price) {
                     const lines = document.querySelector("#sellLines");
@@ -755,7 +763,7 @@
 
                     setTimeout(() => {
                         renderAll();
-                    }, 1500);
+                    }, 2500);
                 }
                 function flashBuyLine(price, qty) {
                     const lines = document.querySelector("#buyLines");
@@ -784,7 +792,7 @@
 
                     setTimeout(() => {
                         renderAll();
-                    }, 1500);
+                    }, 2500);
                 }
 
                 // ===== Init =====
@@ -897,6 +905,29 @@
                 undoButton.addEventListener("click", () => {
                     undoLastAction();
                 });
+
+                function addSimpleHover(buttonEl, normalColor, hoverColor) {
+                    if (!buttonEl) return;
+
+                    buttonEl.addEventListener("mouseenter", () => {
+                        buttonEl.setAttribute("color", hoverColor);
+                    });
+
+                    buttonEl.addEventListener("mouseleave", () => {
+                        buttonEl.setAttribute("color", normalColor);
+                    });
+                }
+                addSimpleHover(undoButton, "#2b2b2b", "#4a4a4a");
+                addSimpleHover(refreshButton, "#1f1f1f", "#3a3a3a");
+
+                addSimpleHover(qtyMinusButton, "#3f3f3f", "#5a5a5a");
+                addSimpleHover(qtyPlusButton, "#3f3f3f", "#5a5a5a");
+
+                addSimpleHover(limitQtyMinusButton, "#3f3f3f", "#5a5a5a");
+                addSimpleHover(limitQtyPlusButton, "#3f3f3f", "#5a5a5a");
+
+                addSimpleHover(limitPriceMinusButton, "#3f3f3f", "#5a5a5a");
+                addSimpleHover(limitPricePlusButton, "#3f3f3f", "#5a5a5a");
 
             });
         });
