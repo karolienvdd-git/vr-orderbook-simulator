@@ -703,7 +703,7 @@
 
                     setTimeout(() => {
                         status.setAttribute("value", "");
-                    }, 5000);
+                    }, 10000);
                 }
                 function flashSellBook() {
                     const panel = document.querySelector("#sellBookPanel");
@@ -715,7 +715,7 @@
 
                     setTimeout(() => {
                         panel.setAttribute("color", originalColor);
-                    }, 2500);
+                    }, 5000);
                 }
                 function flashBuyBook() {
                     const panel = document.querySelector("#buyBookPanel");
@@ -727,7 +727,7 @@
 
                     setTimeout(() => {
                         panel.setAttribute("color", originalColor);
-                    }, 2500);
+                    }, 5000);
                 }
                 function flashSellLines() {
                     const lines = document.querySelector("#sellLines");
@@ -739,7 +739,7 @@
 
                     setTimeout(() => {
                         lines.setAttribute("color", originalColor);
-                    }, 2500);
+                    }, 5000);
                 }
                 function flashSellPrice(price) {
                     const lines = document.querySelector("#sellLines");
@@ -762,7 +762,7 @@
 
                     setTimeout(() => {
                         renderAll();
-                    }, 2500);
+                    }, 5000);
                 }
                 function flashBuyLine(price, qty) {
                     const lines = document.querySelector("#buyLines");
@@ -791,7 +791,7 @@
 
                     setTimeout(() => {
                         renderAll();
-                    }, 2500);
+                    }, 5000);
                 }
 
                 // ===== Init =====
@@ -829,7 +829,7 @@
 
                 qtyPlusButton.addEventListener("click", () => {
                     uiQty += 5;
-                    if (uiQty > 30) uiQty = 30;
+                    if (uiQty > 50) uiQty = 50;
                     updateActionText();
                 });
 
@@ -848,7 +848,7 @@
                 } else {
                     limitQtyPlusButton.addEventListener("click", () => {
                         uiLimitQty += 5;
-                        if (uiLimitQty > 30) uiLimitQty = 30;
+                        if (uiLimitQty > 50) uiLimitQty = 50;
                         updateActionText();
                     });
 
